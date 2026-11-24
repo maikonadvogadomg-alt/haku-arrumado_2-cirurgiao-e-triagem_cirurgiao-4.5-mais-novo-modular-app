@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cirurgião de Código 4.4</title>
+<link rel="stylesheet" href="css/01-estilo.css">
+  <!-- PWA:inicio (gerado pelo Mini SK — pode refazer no painel 📱 PWA) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cirurgião de Código 4.4">
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <script>
+    if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+      addEventListener('load', function () { navigator.serviceWorker.register('service-worker.js').catch(function (e) { console.warn('Service worker:', e); }); });
+    }
+  </script>
+  <!-- PWA:fim -->
+</head>
+<body>
+<header>
+  <div class="topo">
+    <h1>🩺 Cirurgião 4.4</h1>
+    <div class="proj" id="projNome">Nenhum projeto aberto</div>
+    <button class="peq ok" id="bDevolver" hidden title="Manda de volta para o Mini SK só os arquivos que você corrigiu aqui">↩️ Devolver ao Mini SK</button>
+    <button class="peq pri" id="bAbrirTopo">📂 Abrir</button>
+  </div>
+  <nav id="abas">
+    <button data-t="arq" class="on">📂 Arquivos</button>
+    <button data-t="det">🔎 Detectar</button>
+    <button data-t="cod">📄 Código</button>
+    <button data-t="cmp">🔀 Comparar</button>
+    <button data-t="dep">📦 Dependências</button>
+    <button data-t="rec">🧱 Recriar</button>
+    <button data-t="ia">🤖 IA</button>
+    <button data-t="mem">💾 Notas e Memória</button>
+    <button data-t="aj">⚙️ Ajustes</button>
+  </nav>
+  <div id="status"></div>
+</header>
+
+<main>
+<!-- ═════════════ ARQUIVOS ═════════════ -->
+<section id="t-arq">
+  <div class="card">
+    <h2>Abrir projeto</h2>
+    <div class="drop" id="drop">Toque em <b>📂 Escolher arquivos</b> ou arraste aqui.<br><span class="small">Qualquer arquivo: .html, .js, .ts, .tsx, .json, .py… e também <b>.zip</b>, <b>.apk</b>, <b>.jar</b>, <b>.tar</b>, <b>.tar.gz</b>/<b>.tgz</b> e pasta inteira (abre tudo de dentro, sem limite de quantidade).</span></div>
+    <input type="file" id="arquivo" multiple hidden>
+    <input type="file" id="pasta" webkitdirectory multiple hidden>
+    <div class="lin" style="margin-top:8px">
+      <button class="pri" id="bEscolher">📂 Escolher arquivos</button>
+      <button id="bPasta">📁 Abrir pasta</button>
+      <button id="bColar">📋 Colar código</button>
+      <label class="ck fixo"><input type="checkbox" id="juntar"> juntar ao projeto aberto</label>
+    </div>
+    <div id="sessaoBox" hidden class="info"></div>
+    <div class="prog" id="prog" hidden><div></div></div>
+  </div>
+
+  <div class="card" id="cardResumo" hidden>
+    <h2>Resumo</h2>
+    <div class="stats">
+      <div class="stat"><b id="sArq">0</b><span>arquivos</span></div>
+      <div class="stat"><b id="sAna">0</b><span>analisados</span></div>
+      <div class="stat"><b id="sLin">0</b><span>linhas</span></div>
+      <div class="stat"><b id="sTam">0</b><span>tamanho</span></div>
+    </div>
+    <div id="avisosCarga"></div>
+    <div id="tags"></div>
+  </div>
+
+  <div class="card" id="cardLista" hidden>
+    <h2>Arquivos do projeto</h2>
+    <div class="lin">
+      <input id="filtroArq" placeholder="Buscar arquivo pelo nome ou pasta…">
+      <select id="ordemArq" class="fixo" style="width:auto">
+        <option value="cam">A–Z</option><option value="tam">Maior primeiro</option><option value="alerta">Mais alertas</option>
+      </select>
+    </div>
+    <div class="chips" id="chipsArq">
+      <button class="chip on" data-f="todos">Todos</button>
+      <button class="chip" data-f="replit">🚨 Com Replit</button>
+      <button class="chip" data-f="bug">🐛 Com problema</button>
+      <button class="chip" data-f="edit">✏️ Editados</button>
+      <button class="chip" data-f="marc">☑️ Marcados p/ IA</button>
+      <button class="chip" data-f="ign">⏸ Não analisados</button>
+      <button class="chip" data-f="bin">🔒 Binários</button>
+    </div>
+    <div class="small" id="contArq"></div>
+    <div class="lista" id="listaArq"></div>
+    <div class="lin" style="margin-top:8px">
+      <button id="bZip">⬇️ Baixar projeto (.zip, com edições)</button>
+      <button id="bZipEdit">⬇️ Só os editados</button>
+      <button id="bGuardar">💾 Guardar na memória</button>
+      <button class="perigo" id="bFechar">✖ Fechar projeto</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Como usar</h2>
+    <div class="small">
+      1. Abra o projeto (o .zip baixado da Replit, um .apk ou arquivos soltos).<br>
+      2. Vá em <b>🔎 Detectar</b> e toque em <b>🚨 Replit</b>, <b>✅ Sintaxe</b> e <b>📎 Referências</b>.<br>
+      3. Toque em qualquer achado: ele abre o <b>arquivo certo, na linha certa</b>.<br>
+      4. Corrija ali mesmo (✏️ Editar) ou use <b>Buscar e substituir</b> em todos os arquivos.<br>
+      5. Na aba <b>🤖 IA</b> você escolhe quanto código mandar e vê o custo <b>antes</b> de enviar.<br>
+      6. Baixe o projeto corrigido em .zip.
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ DETECTAR ═════════════ -->
+<section id="t-det" hidden>
+  <div class="card">
+    <h2>Onde procurar</h2>
+    <div class="lin">
+      <label class="ck fixo"><input type="radio" name="escopo" value="proj" checked> Projeto inteiro</label>
+      <label class="ck fixo"><input type="radio" name="escopo" value="atual"> Só o arquivo aberto</label>
+    </div>
+    <h3>Exames</h3>
+    <div class="grade">
+      <button data-d="replit">🚨 Replit</button>
+      <button data-d="sintaxe">✅ Sintaxe</button>
+      <button data-d="bugs">🐛 Bugs comuns</button>
+      <button data-d="refs">📎 Referências e pacotes</button>
+      <button data-d="segredos">🔑 Chaves expostas</button>
+      <button data-d="funcoes">📋 Funções</button>
+      <button data-d="storage">🧠 localStorage</button>
+      <button data-d="api">🌐 API / IA / URLs</button>
+      <button data-d="json">📦 JSON</button>
+      <button data-d="teatro">🎭 Código de mentira</button>
+      <button data-d="manual">📖 Manual do projeto</button>
+      <button data-d="tudo" class="pri">⚡ Exame completo</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Buscar (e substituir)</h2>
+    <input id="busca" placeholder="palavra 1, palavra 2, palavra 3 (separe por vírgula)">
+    <div class="lin">
+      <label class="ck fixo"><input type="checkbox" id="bRegex"> expressão regular</label>
+      <label class="ck fixo"><input type="checkbox" id="bCaixa"> diferenciar MAIÚSCULAS</label>
+      <label class="ck fixo"><input type="checkbox" id="bPalavra"> palavra inteira</label>
+    </div>
+    <div class="lin">
+      <button class="pri fixo" id="bBuscar">🔍 Buscar</button>
+      <button class="fixo peq" id="bBuscaReplit">🚨 termos Replit</button>
+      <button class="fixo peq" id="bBuscaErro">🐛 mensagens de erro</button>
+    </div>
+    <details style="margin-top:6px"><summary class="small">✂️ Substituir em todos os arquivos encontrados</summary>
+      <input id="trocaPor" placeholder="Substituir por… (vazio = apagar o termo)" style="margin-top:6px">
+      <button class="perigo" id="bTrocar">✂️ Substituir em tudo</button>
+      <div class="small">Só funciona com <b>um</b> termo (ou uma expressão regular). O original de cada arquivo fica guardado: no arquivo, toque em ↩ Desfazer.</div>
+    </details>
+  </div>
+
+  <div class="card" id="cardRes" hidden>
+    <h2 id="resTit">Resultado</h2>
+    <div class="small" id="resSub"></div>
+    <div class="chips" id="chipsSev"></div>
+    <input id="resFiltro" placeholder="Filtrar dentro do resultado…">
+    <div class="lin" style="margin:6px 0">
+      <button class="peq fixo" id="bRelCopiar">📋 Copiar tudo</button>
+      <button class="peq fixo" id="bRelBaixar">⬇️ Relatório .txt</button>
+      <button class="peq fixo" id="bRelNota">📌 Virar nota</button>
+      <button class="peq fixo" id="bRelIA">🤖 Mandar à IA</button>
+    </div>
+    <div id="resLista"></div>
+    <div id="resMais"></div>
+  </div>
+</section>
+
+<!-- ═════════════ CÓDIGO ═════════════ -->
+<section id="t-cod" hidden>
+  <div class="card">
+    <div class="lin">
+      <select id="selArq"></select>
+    </div>
+    <div class="small" id="codInfo" style="margin:6px 0"></div>
+    <div class="lin">
+      <input id="irLinha" type="number" min="1" placeholder="Ir para linha nº" class="fixo" style="width:140px">
+      <button class="peq fixo" id="bIr">↪ Ir</button>
+      <button class="peq fixo" id="bQuebra">↩︎ Quebrar linhas</button>
+      <button class="peq fixo" id="bEditar">✏️ Editar</button>
+      <button class="peq fixo" id="bDesfazer" hidden>↩ Desfazer edições</button>
+      <button class="peq fixo" id="bBaixarArq">⬇️ Baixar</button>
+      <button class="peq fixo" id="bCopiarArq">📋 Copiar</button>
+      <button class="peq fixo" id="bOrganizar">✨ Organizar</button>
+      <button class="peq fixo" id="bMarcarIA">☑️ Marcar p/ IA</button>
+    </div>
+    <div class="marcas" id="marcas"></div>
+    <div id="codVazio" class="info">Abra um projeto e toque em um arquivo (ou em um achado da aba 🔎 Detectar).</div>
+    <div id="binBox" hidden></div>
+    <div class="vis quebra" id="vis" hidden></div>
+    <div id="editBox" hidden>
+      <textarea id="editor" rows="22" spellcheck="false" wrap="off"></textarea>
+      <div class="lin" style="margin-top:6px">
+        <button class="pri fixo" id="bSalvarEd">💾 Salvar alteração</button>
+        <button class="fixo" id="bCancelarEd">Cancelar</button>
+        <span class="small" id="edInfo"></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════════ COMPARAR ═════════════ -->
+<section id="t-cmp" hidden>
+  <div class="card">
+    <h2>🔀 Comparar duas versões e transplantar</h2>
+    <div class="small">O projeto aberto é o <b>A</b> — o que vai <b>receber</b> (ex.: SK versão 3). Abra aqui a versão <b>B</b> — a <b>doadora</b> (ex.: SK versão 2, que ainda tem as rotas). O Cirurgião mostra o que existe no B e falta no A, e você traz com um toque. Nada muda no B.</div>
+    <div class="lin" style="margin-top:8px">
+      <button class="pri fixo" id="bAbrirB">📂 Abrir versão B (doadora)</button>
+      <button class="fixo" id="bTrocarAB" hidden>⇄ Trocar A e B</button>
+    </div>
+    <input type="file" id="arquivoB" multiple hidden>
+    <div id="cmpInfo" class="small" style="margin-top:6px"></div>
+    <button class="pri" id="bComparar" hidden>🔀 Comparar A × B</button>
+  </div>
+  <div class="card" id="cmpRes" hidden>
+    <h2 id="cmpTit">Resultado</h2>
+    <div class="chips" id="cmpChips"></div>
+    <input id="cmpFiltro" placeholder="Filtrar (nome, rota, caminho)…">
+    <div class="small" id="cmpDica" style="margin:6px 0"></div>
+    <div id="cmpLista"></div>
+  </div>
+</section>
+
+<!-- ═════════════ DEPENDÊNCIAS ═════════════ -->
+<section id="t-dep" hidden>
+  <div class="card">
+    <h2>📦 Dependências (bibliotecas) do projeto</h2>
+    <div class="small">Lê <b>todos</b> os package.json (inclusive monorepo), explica cada biblioteca em português e confere no npm se ela <b>existe</b> e se a <b>versão pedida existe</b> — as duas coisas que mais travam o <code>npm install</code>.</div>
+    <div class="lin" style="margin-top:8px">
+      <button class="pri fixo" id="bDepVer">🔎 Conferir todas no npm</button>
+      <button class="fixo" id="bDepIA">🤖 Explicar as desconhecidas com IA</button>
+      <button class="fixo" id="bDepLimpo">📄 package.json limpo</button>
+      <button class="fixo" id="bDepRel">⬇️ Relatório</button>
+    </div>
+    <div id="depResumo" class="small" style="margin-top:6px"></div>
+    <div class="chips" id="depChips"></div>
+    <input id="depFiltro" placeholder="Filtrar pelo nome…">
+    <div id="depLista"></div>
+  </div>
+  <div class="card">
+    <h2>⌨️ Terminal de pesquisa</h2>
+    <div class="small">Pesquisa de verdade no npm e no Python (PyPI). Comandos: <code>npm search pdf</code> · <code>npm info express</code> · <code>npm versoes react</code> · <code>pip info requests</code> · <code>cdn axios</code> · <code>limpar</code></div>
+    <div id="termSaida" class="term-saida"></div>
+    <div class="lin"><input id="termEntrada" placeholder="digite um comando e Enter" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="fixo pri" id="termIr">↵</button></div>
+  </div>
+</section>
+
+<!-- ═════════════ RECRIAR ═════════════ -->
+<section id="t-rec" hidden>
+  <div class="card">
+    <h2>🧱 Plano completo (MD)</h2>
+    <div class="small">Resumo, tecnologias, estrutura de pastas inteira, dependências explicadas, rotas da API, problemas encontrados e o passo a passo para recriar. Bom para guardar e para mandar à IA.</div>
+    <label class="ck"><input type="checkbox" id="recExames" checked> incluir os problemas encontrados (roda o ⚡ Exame completo)</label>
+    <div class="lin"><button class="pri fixo" id="bPlano">📝 Gerar plano</button><button class="fixo" id="bPlanoPartes">⬇️ Baixar em 3 partes</button></div>
+  </div>
+  <div class="card">
+    <h2>🧰 Scripts para recriar o projeto</h2>
+    <div class="small">Gera um .zip com <b>recriar.bat</b> (Windows), <b>recriar.ps1</b> e <b>recriar.sh</b> (celular com Termux, Linux, Mac). Dois cliques e ele cria as pastas e os arquivos do projeto no computador.</div>
+    <label class="ck"><input type="radio" name="recModo" value="tudo" checked> com o conteúdo de todos os arquivos (recria o projeto inteiro)</label>
+    <label class="ck"><input type="radio" name="recModo" value="vazio"> só as pastas e arquivos vazios (o "esqueleto")</label>
+    <label class="ck"><input type="checkbox" id="recNpm" checked> no fim, rodar <code>npm install</code> (se houver package.json)</label>
+    <label class="ck"><input type="checkbox" id="recEdit" checked> usar as minhas edições (desmarcado: os arquivos como vieram)</label>
+    <button class="pri" id="bScripts">⬇️ Baixar scripts</button>
+    <div id="recInfo" class="small"></div>
+  </div>
+</section>
+
+<!-- ═════════════ IA ═════════════ -->
+<section id="t-ia" hidden>
+  <div class="card">
+    <h2>Provedor</h2>
+    <div class="lin">
+      <select id="iaProv" class="fixo" style="width:auto"></select>
+      <input id="iaChave" type="password" placeholder="Cole sua chave (gsk_… AIza… AQ.… sk-… sk-ant-… sk-or-…)" autocomplete="off">
+      <button class="peq fixo" id="bVerChave">👁</button>
+    </div>
+    <label class="ck"><input type="checkbox" id="iaLembrar"> lembrar a chave neste aparelho (fica só no navegador deste celular)</label>
+    <div class="lin">
+      <div><label>Modelo</label><input id="iaModelo"></div>
+      <div><label>Endereço (base)</label><input id="iaBase"></div>
+    </div>
+    <div class="lin">
+      <div><label>Janela do modelo (tokens)</label><input id="iaJanela" type="number"></div>
+      <div><label>US$ por 1 milhão — entrada</label><input id="iaPIn" type="number" step="0.01"></div>
+      <div><label>US$ por 1 milhão — saída</label><input id="iaPOut" type="number" step="0.01"></div>
+    </div>
+    <div class="small">Os preços já vêm preenchidos com valores aproximados — confira no site do provedor e ajuste se precisar.</div>
+  </div>
+
+  <div class="card">
+    <h2>O que mandar junto</h2>
+    <select id="iaCtx">
+      <option value="nada">Só a pergunta (nenhum código)</option>
+      <option value="res">O resultado da última detecção</option>
+      <option value="arq" selected>O arquivo aberto (inteiro)</option>
+      <option value="trecho">Um trecho do arquivo aberto (linhas De–Até)</option>
+      <option value="marc">Os arquivos marcados ☑️</option>
+      <option value="proj">O projeto inteiro (todos os analisados)</option>
+    </select>
+    <div class="lin" id="trechoBox" hidden>
+      <div><label>De linha</label><input id="iaDe" type="number" min="1" value="1"></div>
+      <div><label>Até linha</label><input id="iaAte" type="number" min="1" value="200"></div>
+    </div>
+    <label class="ck"><input type="checkbox" id="iaNumerar" checked> numerar as linhas (a IA consegue dizer “linha 230”)</label>
+    <div class="lin">
+      <div><label>Tamanho máximo da resposta</label>
+        <select id="iaMaxOut"><option>1000</option><option>2000</option><option selected>4000</option><option>8000</option><option>16000</option><option>32000</option></select></div>
+    </div>
+    <div class="medidor" id="medidor">—</div>
+  </div>
+
+  <div class="card">
+    <h2>Pergunta</h2>
+    <div class="chips">
+      <button class="chip" data-p="replit">🚨 Limpar Replit</button>
+      <button class="chip" data-p="bugs">🔧 Corrigir bugs</button>
+      <button class="chip" data-p="explicar">💡 Explicar</button>
+      <button class="chip" data-p="jur">⚖️ Projeto jurídico</button>
+      <button class="chip" data-p="notas">📌 Analisar minhas notas</button>
+    </div>
+    <textarea id="iaPerg" rows="4" placeholder="Ex.: O que esse código faz? Tem dependência da Replit? Como corrigir?"></textarea>
+    <div class="lin">
+      <button class="pri fixo" id="bEnviar">🤖 Enviar</button>
+      <button class="fixo" id="bParar" hidden>⏹ Parar</button>
+      <button class="fixo" id="bContinuar" hidden>▶ Continuar de onde parou</button>
+      <button class="fixo peq" id="bNovaConv">🧹 Nova conversa</button>
+    </div>
+    <div class="small" id="convInfo"></div>
+    <div id="conversa"></div>
+  </div>
+
+  <div class="card">
+    <h2>Gasto</h2>
+    <div id="gastoResumo" class="small"></div>
+    <div class="lin">
+      <div><label>Limite por mês (US$, 0 = sem limite)</label><input id="gastoLimite" type="number" step="0.5"></div>
+      <div><label>Avisar se um envio passar de (US$)</label><input id="gastoAviso" type="number" step="0.01"></div>
+    </div>
+    <details><summary class="small">Ver lançamentos</summary><div id="gastoLista"></div></details>
+  </div>
+</section>
+
+<!-- ═════════════ NOTAS E MEMÓRIA ═════════════ -->
+<section id="t-mem" hidden>
+  <div class="card">
+    <h2>📌 Notas de triagem</h2>
+    <div class="small">Notas ligadas a arquivo e linha. Toque para abrir no lugar.</div>
+    <div class="lin" style="margin:6px 0">
+      <button class="peq fixo" id="bNovaNota">＋ Nova nota</button>
+      <button class="peq fixo" id="bNotasBaixar">⬇️ Baixar .txt</button>
+      <button class="peq fixo" id="bNotasIA">🤖 Analisar com IA</button>
+      <button class="peq fixo perigo" id="bNotasLimpar">🗑 Limpar</button>
+    </div>
+    <div id="listaNotas"></div>
+  </div>
+  <div class="card">
+    <h2>💾 Projetos guardados</h2>
+    <div class="small">Guardados no banco do navegador (IndexedDB) — aguenta projetos grandes, ao contrário da 3.0.</div>
+    <div id="listaMem"></div>
+  </div>
+  <div class="card">
+    <h2>📜 Histórico da IA</h2>
+    <input id="histBusca" placeholder="Buscar no histórico…">
+    <div class="lin" style="margin:6px 0">
+      <button class="peq fixo" id="bHistBaixar">⬇️ Baixar .txt</button>
+      <button class="peq fixo perigo" id="bHistLimpar">🗑 Limpar</button>
+    </div>
+    <div id="listaHist"></div>
+  </div>
+</section>
+
+<!-- ═════════════ AJUSTES ═════════════ -->
+<section id="t-aj" hidden>
+  <div class="card">
+    <h2>📏 Controle de tamanho</h2>
+    <label>Analisar arquivos de até</label>
+    <select id="cfLimite">
+      <option value="0">Sem limite (analisa tudo)</option>
+      <option value="100">100 KB</option><option value="500">500 KB</option>
+      <option value="1024">1 MB</option><option value="5120">5 MB</option><option value="20480">20 MB</option>
+    </select>
+    <div class="small">Arquivos maiores continuam na lista (marcados ⏸) e você pode incluir um por um.</div>
+    <label class="ck"><input type="checkbox" id="cfPastas"> não analisar estas pastas (continuam na lista):</label>
+    <input id="cfPastasTxt">
+    <label class="ck"><input type="checkbox" id="cfEstilo"> mostrar também avisos de estilo (==, var, innerHTML +=…) — geram muitos falsos alarmes</label>
+    <label class="ck"><input type="checkbox" id="cfSessao"> guardar o projeto aberto automaticamente (para reabrir depois)</label>
+  </div>
+  <div class="card">
+    <h2>🗄 Dados</h2>
+    <div class="lin">
+      <button class="fixo" id="bBackup">⬇️ Backup (notas, histórico, gasto, ajustes)</button>
+      <button class="fixo" id="bRestaurar">⬆️ Restaurar backup</button>
+      <button class="fixo" id="bMigrar">📥 Trazer dados da versão 3.0</button>
+    </div>
+    <input type="file" id="fBackup" accept=".json" hidden>
+    <div class="small">A chave da IA <b>nunca</b> entra no backup.</div>
+    <button class="perigo" id="bApagarTudo">🗑 Apagar todos os dados deste aparelho</button>
+  </div>
+</section>
+</main>
+
+<div class="barra-sel" id="barraSel" hidden>
+  <span class="small" id="selInfo" style="align-self:center;padding:0 6px"></span>
+  <button class="peq" id="sNota">📌 Nota</button>
+  <button class="peq" id="sIA">🤖 Perguntar à IA</button>
+  <button class="peq" id="sBloco">📎 Extrair bloco</button>
+  <button class="peq" id="sCopiar">📋 Copiar linha</button>
+  <button class="peq" id="sFechar">✖</button>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="caixa">
+    <div class="mh"><b id="mTit"></b><button class="peq" id="mX">✖</button></div>
+    <div class="mc" id="mCorpo"></div>
+    <div class="mf" id="mPe"></div>
+  </div>
+</div>
+
+<script src="js/01-funcoes-decode.js"></script>
+<script src="js/02-funcoes-lerarquivos.js"></script>
+<script src="js/03-funcoes-renderlistaarq.js"></script>
+<script src="js/04-funcoes-tokensestrutura.js"></script>
+<script src="js/05-funcoes-trechohtml.js"></script>
+<script src="js/06-funcoes-medir.js"></script>
+<script src="js/07-funcoes-salvarsessao.js"></script>
+<script src="js/08-funcoes-difflinhas.js"></script>
+<script src="js/09-funcoes-inserirnoa.js"></script>
+<script src="js/10-funcoes-renderdeps.js"></script>
+<script src="js/11-inicio.js"></script>
+<script src="js/12-inicio.js"></script>
+<script src="js/13-inicio.js"></script>
+<script src="js/14-inicio.js"></script>
+<script src="js/15-inicio.js"></script>
+<script src="js/16-inicio.js"></script>
+</body>
+</html>
